@@ -4,6 +4,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { JWT_SECRET_KEY } from "../config/index.js";
 import passwordValidator from "password-validator";
+import mongoose from "mongoose";
 
 const schema = new passwordValidator();
 schema
@@ -128,6 +129,16 @@ export const login = async (req, res) => {
     });
 
     res.json({ token });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+export const profile = async (req, res) => {
+  try {
+    const userDocument = await User.findById(req.user.userId).select('-password');
+    res.json({ message: 'Profile route', userData: userDocument });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal Server Error" });
