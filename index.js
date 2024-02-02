@@ -22,7 +22,7 @@ app.get('/', (req, res) => {
   res.send("Hello World!");
 });
 
-app.use('/api', authRoutes);
+app.use('/api/auth', authRoutes);
 
 app.listen(PORT, () => {
   console.log(`Example app listening on port http://localhost:${PORT}`);

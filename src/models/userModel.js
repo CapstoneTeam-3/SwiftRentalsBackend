@@ -7,8 +7,11 @@ const userSchema = new Schema({
   password: { type: String, required: true },
   dob: { type: Date, required: true },
   role: { type: String, required: true },
+  isConfirmed: { type: Boolean, required: true, default: false },
+  resetToken: { type: String },
+  resetTokenExpiry: { type: Date },
 });
 
-const User = model('User', userSchema);
+const User = model("User", userSchema);
 
 export default User;
