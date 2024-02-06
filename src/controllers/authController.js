@@ -118,6 +118,21 @@ export const register = async (req, res) => {
 export const login = async (req, res) => {
   const { email, password } = req.body;
 
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!email || !emailRegex.test(email)) {
+    return res.status(400).json({
+      error: "Invalid email. Please provide a valid email address.",
+    });
+  }
+
+  const isPasswordValid = schema.validate(password);
+
+  if (!isPasswordValid) {
+    return res.status(400).json({
+      error: "Invalid password. Please follow the password policy.",
+    });
+  }
+
   try {
     const user = await User.findOne({ email });
 
