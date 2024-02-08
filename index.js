@@ -1,5 +1,6 @@
 // app.js or index.js
 import express from "express";
+import cors from "cors";
 import bodyParser from 'body-parser';
 import mongoose from "mongoose";
 import { PORT, MONGODB_URI } from './src/config/index.js'
@@ -9,6 +10,8 @@ import carRoutes from "./src/routes/car.js";
 const app = express();
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+app.use(cors());
 
 mongoose.connect(MONGODB_URI, {});
 
