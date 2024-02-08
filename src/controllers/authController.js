@@ -194,7 +194,7 @@ export const forgotPassword = async (req, res) => {
     }
 
     let token = generateToken(user._id);
-    const resetLink = `http://localhost:3001/api/auth/reset-password?token=${token}`;
+    const resetLink = `http://localhost:3000/api/auth/password/resetPassword?token=${token}`;
     user.resetToken = token;
     user.resetTokenExpiry = Date.now() + 3600000;
     await user.save();
