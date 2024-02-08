@@ -118,6 +118,21 @@ export const register = async (req, res) => {
 export const login = async (req, res) => {
   const { email, password } = req.body;
 
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!email || !emailRegex.test(email)) {
+    return res.status(400).json({
+      error: "Invalid email. Please provide a valid email address.",
+    });
+  }
+
+  const isPasswordValid = schema.validate(password);
+
+  if (!isPasswordValid) {
+    return res.status(400).json({
+      error: "Invalid password. Please follow the password policy.",
+    });
+  }
+
   try {
     const user = await User.findOne({ email });
 
@@ -179,7 +194,7 @@ export const forgotPassword = async (req, res) => {
     }
 
     let token = generateToken(user._id);
-    const resetLink = `http://localhost:3001/api/auth/reset-password?token=${token}`;
+    const resetLink = `http://localhost:3000/api/auth/password/resetPassword?token=${token}`;
     user.resetToken = token;
     user.resetTokenExpiry = Date.now() + 3600000;
     await user.save();
@@ -231,8 +246,9 @@ export const resetPassword = async (req, res) => {
       return res.status(400).json({ error: "Expired reset token" });
     }
 
-    // Update user password
-    user.password = newPassword;
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    
+    user.password = hashedPassword;
     user.resetToken = undefined;
     user.resetTokenExpiry = undefined;
     await user.save();
