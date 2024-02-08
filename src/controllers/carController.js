@@ -125,11 +125,11 @@ export const GetAllCars = async (req, res) => {
           return res.status(404).json({ error: 'Page not found' });
         }
     
-        const cars = await Cars.find()
+        const cars = await Cars.find().populate('Features')
           .skip((page - 1) * pageSize)
           .limit(pageSize);
     
-        res.json({
+        res.status(200).json({
           page,
           totalPages,
           pageSize,
@@ -157,7 +157,6 @@ export const DeleteCar = async (req, res) => {
     
         res.json({ message: 'Car deleted successfully' });
       } catch (error) {
-        console.error(error);
         res.status(500).json({ error: 'Internal Server Error' });
       }
 };
@@ -170,9 +169,17 @@ export const AddFeature = async (req, res) => {
       icon,
     });
     await newFeature.save();
-    res.json({ message: "Successfully added new feature." });
+    res.status(201).json({ message: "Successfully added new feature." });
   } catch (error) {
-    console.error("Error adding feature:", error);
-    throw error;
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+export const listAllFeatures = async (req, res) => {
+  try {
+    const features = await Features.find();
+    res.status(200).json({ features: features });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 };
