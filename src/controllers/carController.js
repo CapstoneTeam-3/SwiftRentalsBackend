@@ -3,13 +3,14 @@ import Features from "../models/FeatureModel.js";
 import path from "path";
 import multer from "multer";
 import fs from "fs";
-import { uid } from 'uid';
+import { uid } from "uid";
 
 const maxFiles = 5;
 const allowedFileTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif"];
 const __filename = new URL(import.meta.url).pathname;
 const __dirname = path.dirname(__filename);
-const imageUniqueName = new Date().toISOString().split("T")[0] + "-" + uid(16) + "-";
+const imageUniqueName =
+  new Date().toISOString().split("T")[0] + "-" + uid(16) + "-";
 
 const storage = multer.diskStorage({
   destination: "./public/uploads/carimages/",
@@ -125,21 +126,45 @@ export const AddCar = async (req, res) => {
 };
 
 export const GetAllCars = async (req, res) => {
+  const {
+    page = 1,
+    pageSize = 10,
+    make,
+    model,
+    location,
+    is_available,
+    sort,
+  } = req.query;
   try {
-    const page = parseInt(req.query.page) || 1;
-    const pageSize = parseInt(req.query.pageSize) || 10;
+    let sortOptions = {};
+    if (sort) {
+      if (sort === "priceLowToHigh") {
+        sortOptions.price = 1;
+      } else if (sort === "priceHighToLow") {
+        sortOptions.price = -1;
+      } else if (sort === "newArrivals") {
+        sortOptions.createdAt = -1;
+      }
+    }
 
-    const totalCars = await Cars.countDocuments();
+    let filterOptions = {};
+    if (make) filterOptions.make = new RegExp(make, "i");
+    if (model) filterOptions.model = new RegExp(model, "i");
+    if (location) filterOptions.location = new RegExp(location, "i");
+    if (is_available)filterOptions.is_available = is_available;
+
+    const totalCars = await Cars.countDocuments(filterOptions);
     const totalPages = Math.ceil(totalCars / pageSize);
 
     if (page > totalPages) {
       return res.status(404).json({ error: "Page not found" });
     }
 
-    const cars = await Cars.find()
-      .populate("Features")
+    const cars = await Cars.find(filterOptions)
+      .sort(sortOptions)
       .skip((page - 1) * pageSize)
-      .limit(pageSize);
+      .limit(pageSize)
+      .populate("Features");
 
       const carsWithImages = cars.map((car) => {
         const imagesData = car.images.map((imageName) => {
@@ -148,13 +173,17 @@ export const GetAllCars = async (req, res) => {
             "../../public/uploads/carimages",
             imageName
           );
-          const imageData = fs.readFileSync(imagePath, "base64");
-          return {
-            name: imageName,
-            data: imageData,
-          };
-        });
-  
+          try {
+            const imageData = fs.readFileSync(imagePath, "base64");
+            return {
+              name: imageName,
+              data: imageData,
+            };
+          } catch (error) {
+            return null;
+          }
+        }).filter((imageData) => imageData !== null);
+
         return {
           ...car._doc,
           images: imagesData,

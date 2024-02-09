@@ -10,7 +10,8 @@ const CarSchema = new Schema({
   images: { type: [String], required: true },
   description: { type: String, required: true },
   location: { type: String, required: true },
-  Features: [{ type: Schema.Types.ObjectId, ref: 'Feature', required: true }]
+  Features: [{ type: Schema.Types.ObjectId, ref: 'Feature', required: true }],
+  createdAt: { type: Date, default: Date.now }
 });
 
 const Cars = model("Cars", CarSchema);  
