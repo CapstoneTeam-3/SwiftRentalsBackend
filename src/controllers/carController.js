@@ -3,17 +3,18 @@ import Features from "../models/FeatureModel.js";
 import path from "path";
 import multer from "multer";
 import fs from "fs";
+import { uid } from 'uid';
 
 const maxFiles = 5;
 const allowedFileTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif"];
 const __filename = new URL(import.meta.url).pathname;
 const __dirname = path.dirname(__filename);
-const datePart = new Date().toISOString().split("T")[0];
+const imageUniqueName = new Date().toISOString().split("T")[0] + "-" + uid(16) + "-";
 
 const storage = multer.diskStorage({
   destination: "./public/uploads/carimages/",
   filename: function (req, file, cb) {
-    cb(null, datePart + "-" + file.originalname);
+    cb(null, imageUniqueName + file.originalname);
   },
 });
 
@@ -95,7 +96,7 @@ export const AddCar = async (req, res) => {
 
         const userId = req.user.userId;
         const imagePaths = req.files.map(
-          (file) => datePart + file.originalname
+          (file) => imageUniqueName + file.originalname
         );
         const featuresArray = JSON.parse(Features);
 
@@ -140,29 +141,37 @@ export const GetAllCars = async (req, res) => {
       .skip((page - 1) * pageSize)
       .limit(pageSize);
 
+      const carsWithImages = cars.map((car) => {
+        const imagesData = car.images.map((imageName) => {
+          const imagePath = path.join(
+            __dirname,
+            "../../public/uploads/carimages",
+            imageName
+          );
+          const imageData = fs.readFileSync(imagePath, "base64");
+          return {
+            name: imageName,
+            data: imageData,
+          };
+        });
+  
+        return {
+          ...car._doc,
+          images: imagesData,
+        };
+      });
+
     res.status(200).json({
       page,
       totalPages,
       pageSize,
       totalCars,
-      cars,
+      cars: carsWithImages,
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal Server Error" });
   }
-};
-
-export const GetAllCarsImages = (req, res) => {
-  const imageName = req.params.imageName;
-  const currentDirPath = path.resolve(__dirname);
-  const imagePath = path.join(
-    currentDirPath,
-    "../../public/uploads/carimages",
-    imageName
-  );
-
-  res.sendFile(imagePath);
 };
 
 export const UpdateCar = async (req, res) => {
@@ -190,7 +199,6 @@ export const UpdateCar = async (req, res) => {
     } = req.body;
 
     try {
-
       if (!make || typeof make !== "string") {
         res.status(400).json({ error: "Car Make is Required" });
       }
@@ -213,8 +221,7 @@ export const UpdateCar = async (req, res) => {
         req.files.some((file) => !allowedFileTypes.includes(file.mimetype))
       ) {
         return res.status(400).json({
-          error:
-            "Invalid file type(s). Allowed types are JPEG, JPG, PNG, GIF.",
+          error: "Invalid file type(s). Allowed types are JPEG, JPG, PNG, GIF.",
         });
       } else if (req.files.length > maxFiles) {
         return res.status(400).json({
@@ -234,8 +241,9 @@ export const UpdateCar = async (req, res) => {
         res.status(400).json({ error: "Car Feature is Required" });
       }
 
-      
-      const imagePaths = req.files.map((file) => datePart + file.originalname);
+      const imagePaths = req.files.map(
+        (file) => imageUniqueName + file.originalname
+      );
 
       if (car.images && Array.isArray(car.images)) {
         const oldCarImages = car.images.map((filename) => filename);
@@ -290,13 +298,13 @@ export const GetCarDetails = async (req, res) => {
 export const DeleteCar = async (req, res) => {
   try {
     const carId = req.params.id;
-
     const existingCar = await Cars.findById(carId);
+
     if (!existingCar) {
       return res.status(404).json({ error: "Car not found" });
     }
 
-    await existingCar.remove();
+    await Cars.deleteOne({ _id: carId });
 
     res.json({ message: "Car deleted successfully" });
   } catch (error) {
