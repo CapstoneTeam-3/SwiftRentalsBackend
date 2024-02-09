@@ -19,6 +19,7 @@
     "mongoose": "^8.1.1",
     "multer": "^1.4.5-lts.1",
     "nodemailer": "^6.9.9",
-    "password-validator": "^5.3.0"
+    "password-validator": "^5.3.0",
+    "uid": "^2.0.2"
   }
 }
