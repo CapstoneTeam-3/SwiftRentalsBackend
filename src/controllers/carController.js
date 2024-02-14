@@ -422,9 +422,9 @@ export const AddAvailability = async (req, res) => {
 
 export const ListAvailability = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { car_id } = req.body;
     // Find the car by ID
-    const car = await Cars.findById(id);
+    const car = await Cars.findById(car_id);
 
     if (!car) {
       return res.status(404).json({ error: "Car not found" });
@@ -460,6 +460,41 @@ export const DeleteAvailability = async (req, res) => {
       }
     });
     if (deletedAvailability) {
+
+      await car.save();
+
+      return res.status(200).json({ availability: car.availability });
+    }
+    return res.status(404).json({ message: "Availability not found" });
+  } catch (error) {
+    console.error("Error updating availability:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+export const ModifyAvailability = async (req, res) => {
+  try {
+    const { car_id, availability } = req.body;
+    // Find the car by ID
+    const car = await Cars.findById(car_id);
+
+    if (!car) {
+      return res.status(404).json({ error: "Car not found" });
+    }
+
+    let modifiedAvailability = false;
+
+    availability.forEach(({ date, is_available }) => {
+      const index = car.availability.findIndex(
+        (availability) => availability.date.getTime() === new Date(date).getTime()
+      );
+
+      if (index !== -1) {
+        modifiedAvailability = true;
+        car.availability[index].is_available = is_available ?? false;
+      }
+    });
+    if (modifiedAvailability) {
 
       await car.save();
 
