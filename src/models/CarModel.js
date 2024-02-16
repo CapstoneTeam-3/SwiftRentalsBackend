@@ -7,7 +7,7 @@ const CarSchema = new Schema({
   is_available: { type: Boolean, required: true, default:false },
   price: { type: Number, required: true },
   User: { type: Schema.Types.ObjectId, required: true },
-  images: { type: [String], required: true },
+  images: { type: [Object], required: true },
   description: { type: String, required: true },
   location: { type: String, required: true },
   Features: [{ type: Schema.Types.ObjectId, ref: 'Feature', required: true }],
