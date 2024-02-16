@@ -151,7 +151,7 @@ export const GetAllCars = async (req, res) => {
     if (make) filterOptions.make = new RegExp(make, "i");
     if (model) filterOptions.model = new RegExp(model, "i");
     if (location) filterOptions.location = new RegExp(location, "i");
-    if (is_available)filterOptions.is_available = is_available;
+    if (is_available) filterOptions.is_available = is_available;
 
     const totalCars = await Cars.countDocuments(filterOptions);
     const totalPages = Math.ceil(totalCars / pageSize);
@@ -166,29 +166,29 @@ export const GetAllCars = async (req, res) => {
       .limit(pageSize)
       .populate("Features");
 
-      const carsWithImages = cars.map((car) => {
-        const imagesData = car.images.map((imageName) => {
-          const imagePath = path.join(
-            __dirname,
-            "../../public/uploads/carimages",
-            imageName
-          );
-          try {
-            const imageData = fs.readFileSync(imagePath, "base64");
-            return {
-              name: imageName,
-              data: imageData,
-            };
-          } catch (error) {
-            return null;
-          }
-        }).filter((imageData) => imageData !== null);
+    const carsWithImages = cars.map((car) => {
+      // const imagesData = car.images.map((imageName) => {
+      //   const imagePath = path.join(
+      //     __dirname,
+      //     "../../public/uploads/carimages",
+      //     imageName
+      //   );
+      //   try {
+      //     const imageData = fs.readFileSync(imagePath, "base64");
+      //     return {
+      //       name: imageName,
+      //       data: imageData,
+      //     };
+      //   } catch (error) {
+      //     return null;
+      //   }
+      // }).filter((imageData) => imageData !== null);
 
-        return {
-          ...car._doc,
-          images: imagesData,
-        };
-      });
+      return {
+        ...car._doc,
+        // images: imagesData,
+      };
+    });
 
     res.status(200).json({
       page,
@@ -382,3 +382,127 @@ export const ListAllFeatures = async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
+
+export const AddAvailability = async (req, res) => {
+  try {
+    const { car_id, dates } = req.body;
+    // Find the car by ID
+    const car = await Cars.findById(car_id);
+
+    if (!car) {
+      return res.status(404).json({ error: "Car not found" });
+    }
+
+    const invalidDates = dates.filter(date => !/^\d{2}-\d{2}-\d{4}$/.test(date));
+
+    if (invalidDates.length > 0) {
+      return res.status(400).json({ error: "Invalid date format. Date should be in mm-dd-yyyy format." });
+    }
+
+    // Update availability array based on received dates
+    dates.forEach((date) => {
+      const index = car.availability.findIndex(
+        (availability) => availability.date.getTime() === new Date(date).getTime()
+      );
+
+      if (index === -1) {
+        // Date does not exist, add it to availability
+        car.availability.push({ date: new Date(date), is_available: true });
+      }
+    });
+
+    await car.save();
+
+    return res.status(200).json({ message: "Availability added successfully" });
+  } catch (error) {
+    console.error("Error updating availability:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+export const ListAvailability = async (req, res) => {
+  try {
+    const { car_id } = req.body;
+    // Find the car by ID
+    const car = await Cars.findById(car_id);
+
+    if (!car) {
+      return res.status(404).json({ error: "Car not found" });
+    }
+
+    return res.status(200).json({ availability: car.availability });
+  } catch (error) {
+    console.error("Error updating availability:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+export const DeleteAvailability = async (req, res) => {
+  try {
+    const { car_id, dates } = req.body;
+    // Find the car by ID
+    const car = await Cars.findById(car_id);
+
+    if (!car) {
+      return res.status(404).json({ error: "Car not found" });
+    }
+
+    let deletedAvailability = false;
+
+    dates.forEach((date) => {
+      const index = car.availability.findIndex(
+        (availability) => availability.date.getTime() === new Date(date).getTime()
+      );
+
+      if (index !== -1) {
+        deletedAvailability = true;
+        car.availability.splice(index, 1);
+      }
+    });
+    if (deletedAvailability) {
+
+      await car.save();
+
+      return res.status(200).json({ availability: car.availability });
+    }
+    return res.status(404).json({ message: "Availability not found" });
+  } catch (error) {
+    console.error("Error updating availability:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+export const ModifyAvailability = async (req, res) => {
+  try {
+    const { car_id, availability } = req.body;
+    // Find the car by ID
+    const car = await Cars.findById(car_id);
+
+    if (!car) {
+      return res.status(404).json({ error: "Car not found" });
+    }
+
+    let modifiedAvailability = false;
+
+    availability.forEach(({ date, is_available }) => {
+      const index = car.availability.findIndex(
+        (availability) => availability.date.getTime() === new Date(date).getTime()
+      );
+
+      if (index !== -1) {
+        modifiedAvailability = true;
+        car.availability[index].is_available = is_available ?? false;
+      }
+    });
+    if (modifiedAvailability) {
+
+      await car.save();
+
+      return res.status(200).json({ availability: car.availability });
+    }
+    return res.status(404).json({ message: "Availability not found" });
+  } catch (error) {
+    console.error("Error updating availability:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+}
