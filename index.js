@@ -6,6 +6,7 @@ import mongoose from "mongoose";
 import { PORT, MONGODB_URI } from './src/config/index.js'
 import authRoutes from "./src/routes/auth.js";
 import carRoutes from "./src/routes/car.js";
+import chatRoutes from "./src/routes/chat.js";
 
 const app = express();
 app.use(bodyParser.json());
@@ -28,6 +29,7 @@ app.get('/', (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/car', carRoutes);
+app.use('/api/chat', chatRoutes);
 
 app.listen(PORT, () => {
   console.log(`Example app listening on port http://localhost:${PORT}`);
