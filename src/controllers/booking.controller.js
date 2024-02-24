@@ -1,38 +1,22 @@
 import { z } from "zod";
+import { BookingStatus, mapValidationErrors } from "../constants.js";
 import Bookings from "../models/BookingModel.js";
 import Cars from "../models/CarModel.js";
 import User from "../models/userModel.js";
+import {
+  BookingCreateSchema,
+  BookingDeleteSchema,
+} from "../models/validationSchemas.js";
 
-const isValidObjectId = (value) => {
-  const objectIdPattern = /^[0-9a-fA-F]{24}$/;
-  return objectIdPattern.test(value);
-};
 //schema to server side validate data
-const BookingSchema = z.object({
-  start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, {
-    message: "Invalid start date format. Date must be in yyyy-mm-dd format.",
-  }),
-  end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, {
-    message: "Invalid end date format. Date must be in yyyy-mm-dd format.",
-  }),
-  user_id: z.string().refine((value) => isValidObjectId(value), {
-    message: "Invalid MongoDB ObjectId.",
-  }),
-  car_id: z.string().refine((value) => isValidObjectId(value), {
-    message: "Invalid MongoDB ObjectId.",
-  }),
-});
 
 export const createBookingRequest = async (req, res) => {
   const currentBooking = req.body;
   //run schema validation
-  const validate = BookingSchema.safeParse({ ...currentBooking });
+  const validate = BookingCreateSchema.safeParse({ ...currentBooking });
   //if validation fail return map of error objects
   if (!validate.success) {
-    const errors = validate.error.errors.reduce((acc, error) => {
-      acc[error.path[0]] = error.message;
-      return acc;
-    }, {});
+    const errors = mapValidationErrors(validate);
     return res.status(400).json({ errors });
   }
   try {
@@ -41,11 +25,15 @@ export const createBookingRequest = async (req, res) => {
       User: currentBooking.user_id,
       Car: currentBooking.car_id,
     });
-    if (isBookingExist) {
-      return res
-        .status(400)
-        .json({ error: "User has already requested booking for this car" });
+    //allow booking if its date is after the rejected request period
+    if (isBookingExist && isBookingExist.is_booked === BookingStatus.Rejected) {
+      if (
+        new Date(isBookingExist.end_date) >= new Date(currentBooking.start_date)
+      ) {
+        return res.status(400).json({ error: "This request already exists" });
+      }
     }
+
     //check if user is valid
     const isUserExist = await User.findById(currentBooking.user_id);
     if (!isUserExist) {
@@ -71,6 +59,44 @@ export const createBookingRequest = async (req, res) => {
       return res.status(200).json({ message: "Booking saved Successfully!" });
     } else {
       return res.status(500).json({ error: "Failed to create booking" });
+    }
+  } catch (e) {
+    console.log("Booking Create Error: ", e);
+    res.sendStatus(500);
+  }
+  res.sendStatus(200);
+};
+
+export const deleteBookingRequestById = async (req, res) => {
+  const { booking_id } = req.body;
+  //run schema validation
+  const validate = BookingDeleteSchema.safeParse({ booking_id });
+  //if validation fail return map of error objects
+  if (!validate.success) {
+    const errors = mapValidationErrors(validate);
+    return res.status(400).json({ errors });
+  }
+  try {
+    //check if booking already exists
+    const isBookingExist = await Bookings.findById(booking_id);
+    if (!isBookingExist) {
+      return res.status(400).json({ error: "Requested booking dosen't exist" });
+    }
+    //delete booking
+    const updateBooking = await Bookings.findByIdAndUpdate(
+      { _id: booking_id },
+      { is_booked: BookingStatus.Rejected }
+    );
+    if (updateBooking) {
+      //make car available again and return success
+      await Cars.findByIdAndUpdate(updateBooking.Car, {
+        is_available: true,
+      });
+      // Booking was deleted successfully
+      return res.status(200).json({ message: "Booking Rejected successfully" });
+    } else {
+      // No matching booking found
+      return res.status(404).json({ error: "Booking not found" });
     }
   } catch (e) {
     console.log("Booking Create Error: ", e);
