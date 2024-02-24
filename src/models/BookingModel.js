@@ -6,7 +6,7 @@ const BookingSchema = new Schema({
   end_date: { type: Date, required: true },
   is_booked: { type: String, default: BookingStatus.Pending },
   User: { type: Schema.Types.ObjectId, ref: "User", required: true },
-  Car: { type: Schema.Types.ObjectId, ref: "Car", required: true },
+  Car: { type: Schema.Types.ObjectId, ref: "Cars", required: true },
   createdAt: { type: Date, default: Date.now },
 });
 

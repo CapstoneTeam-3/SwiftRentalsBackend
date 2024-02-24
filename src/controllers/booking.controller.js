@@ -1,11 +1,12 @@
 import { z } from "zod";
-import { BookingStatus, mapValidationErrors } from "../constants.js";
+import { BookingStatus, UserRoles, mapValidationErrors } from "../constants.js";
 import Bookings from "../models/BookingModel.js";
 import Cars from "../models/CarModel.js";
 import User from "../models/userModel.js";
 import {
   BookingCreateSchema,
   BookingDeleteSchema,
+  BookingListSchema,
 } from "../models/validationSchemas.js";
 
 //schema to server side validate data
@@ -56,18 +57,20 @@ export const createBookingRequest = async (req, res) => {
       await Cars.findByIdAndUpdate(currentBooking.car_id, {
         is_available: false,
       });
-      return res.status(200).json({ message: "Booking saved Successfully!" });
+      return res.status(201).json({ message: "Booking saved Successfully!" });
     } else {
       return res.status(500).json({ error: "Failed to create booking" });
     }
   } catch (e) {
+    //server error on failure
     console.log("Booking Create Error: ", e);
     res.sendStatus(500);
   }
   res.sendStatus(200);
 };
 
-export const deleteBookingRequestById = async (req, res) => {
+export const rejectBookingRequestById = async (req, res) => {
+  //get booking id from req
   const { booking_id } = req.body;
   //run schema validation
   const validate = BookingDeleteSchema.safeParse({ booking_id });
@@ -82,7 +85,7 @@ export const deleteBookingRequestById = async (req, res) => {
     if (!isBookingExist) {
       return res.status(400).json({ error: "Requested booking dosen't exist" });
     }
-    //delete booking
+    //update reject booking status
     const updateBooking = await Bookings.findByIdAndUpdate(
       { _id: booking_id },
       { is_booked: BookingStatus.Rejected }
@@ -92,7 +95,7 @@ export const deleteBookingRequestById = async (req, res) => {
       await Cars.findByIdAndUpdate(updateBooking.Car, {
         is_available: true,
       });
-      // Booking was deleted successfully
+      // Booking was rejected successfully
       return res.status(200).json({ message: "Booking Rejected successfully" });
     } else {
       // No matching booking found
@@ -103,4 +106,78 @@ export const deleteBookingRequestById = async (req, res) => {
     res.sendStatus(500);
   }
   res.sendStatus(200);
+};
+export const getAllBookingRequestsWithFilter = async (req, res) => {
+  //get params from query
+  const { active, user_id } = req.query;
+
+  const validate = BookingListSchema.safeParse({ user_id });
+  //if validation fail return map of error objects
+  if (!validate.success) {
+    const errors = mapValidationErrors(validate);
+    return res.status(400).json({ errors });
+  }
+  //find user with given id
+  const user = await User.findById(user_id);
+  //return not found if doesnt exist
+  if (!user) {
+    return res.status(404).json({ error: "user not found" });
+  }
+  //check against constant of role
+  if (user.role === UserRoles.carRental) {
+    //if car renter
+    //if active is given then include is_booked else get all by user
+    var query = {};
+    if (active == "true") {
+      query = { User: user_id, is_booked: BookingStatus.Accepted };
+    } else {
+      query = { User: user_id };
+    }
+    console.log(active, query);
+    //get booking and populate with required data only
+    const bookings = await Bookings.find(query)
+      .populate({
+        path: "User",
+        select: "_id name email role",
+      })
+      .populate({ path: "Car", select: "-availability" });
+    if (!bookings)
+      return req
+        .status(200)
+        .json({ message: "No booking exist for given user" });
+    return res.status(200).json(bookings);
+  } else {
+    //if car owner
+    //get all user cars
+    const cars = await Cars.find({ User: user_id });
+    if (!cars) {
+      return req.status(200).json({ message: "No cars exist for given user" });
+    }
+    const carIds = cars.map((car) => car._id);
+    const bookings = [];
+    //for each of owners car get booking related to it
+    for (const carId of carIds) {
+      //if active is given then include is_booked else get all by user
+      var query = {};
+      if (active == "true") {
+        query = { User: user_id, is_booked: BookingStatus.Accepted };
+      } else {
+        query = { User: user_id };
+      }
+      console.log(query);
+      const currentBookings = await Bookings.find(query)
+        .populate({
+          path: "User",
+          select: "_id name email role",
+        })
+        .populate({ path: "Car", select: "-availability" });
+      bookings.push(currentBookings);
+    }
+    //if no booking return failure
+    if (!bookings)
+      return req
+        .status(200)
+        .json({ message: "No booking exist for given user" });
+    return res.status(200).json(bookings);
+  }
 };

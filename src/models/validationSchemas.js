@@ -25,3 +25,9 @@ export const BookingDeleteSchema = z.object({
     message: "Invalid MongoDB ObjectId.",
   }),
 });
+
+export const BookingListSchema = z.object({
+  user_id: z.string().refine((value) => isValidObjectId(value), {
+    message: "Invalid MongoDB ObjectId.",
+  }),
+});
