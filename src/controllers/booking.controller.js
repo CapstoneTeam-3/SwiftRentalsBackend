@@ -7,6 +7,7 @@ import {
   BookingCreateSchema,
   BookingDeleteSchema,
   BookingListSchema,
+  BookingRespondSchema,
 } from "../models/validationSchemas.js";
 
 //schema to server side validate data
@@ -102,11 +103,63 @@ export const rejectBookingRequestById = async (req, res) => {
       return res.status(404).json({ error: "Booking not found" });
     }
   } catch (e) {
-    console.log("Booking Create Error: ", e);
+    console.log("Booking Reject Error: ", e);
     res.sendStatus(500);
   }
   res.sendStatus(200);
 };
+export const setBookingRequestResponse = async (req, res) => {
+  const { booking_id, booking_status } = req.body;
+  //set booking string
+  const is_booked = booking_status
+    ? BookingStatus.Accepted
+    : BookingStatus.Rejected;
+  const validate = BookingRespondSchema.safeParse({ booking_id });
+  //if validation fail return map of error objects
+  if (!validate.success) {
+    const errors = mapValidationErrors(validate);
+    return res.status(400).json({ errors });
+  }
+  try {
+    //find the requested booking
+    const requestedBooking = await Bookings.findById(booking_id);
+    //if booking dosen't exist return not found status
+    if (!requestedBooking)
+      return res.status(404).json({ error: "Booking not found" });
+    //if booking is already accepted or rejected return bad request
+    if (requestedBooking.is_booked !== BookingStatus.Pending)
+      return res.status(400).json({
+        error: "Booking is already accepted or rejected",
+      });
+    //if booking exist update booking to accepted or reject
+    const updatedBooking = await Bookings.findByIdAndUpdate(booking_id, {
+      is_booked,
+    });
+    if (is_booked === BookingStatus.Accepted) {
+      return res
+        .status(200)
+        .json({ message: "Booking Accepted Successfully!" });
+      //TODO: if server is deployed than use job sceduler like cron to automtically
+      //expire the booking after the booking period ends
+    } else if (is_booked == BookingStatus.Rejected) {
+      //if booking is rejected make car available again
+      const currentCar = await Cars.findByIdAndUpdate(updatedBooking.Car, {
+        is_available: true,
+      });
+      console.log(currentCar);
+      if (currentCar)
+        return res.status(200).json({
+          message: "Booking Rejected Successfully and car is available again",
+        });
+    }
+    return res.sendStatus(500);
+  } catch (e) {
+    //catch unexpected errors
+    console.log("Booking Respond Error: ", e);
+    res.sendStatus(500);
+  }
+};
+
 export const getAllBookingRequestsWithFilter = async (req, res) => {
   //get params from query
   const { active, user_id } = req.query;
