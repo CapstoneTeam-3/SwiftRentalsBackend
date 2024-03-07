@@ -1,15 +1,15 @@
 // src/controllers/authController.js
-import User from "../models/userModel.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import nodemailer from "nodemailer";
+import passwordValidator from "password-validator";
 import {
-  JWT_SECRET_KEY,
+  EMAIL_PASSWORD,
   EMAIL_SERVICE,
   EMAIL_USER,
-  EMAIL_PASSWORD,
+  JWT_SECRET_KEY,
 } from "../config/index.js";
-import passwordValidator from "password-validator";
-import nodemailer from "nodemailer";
+import User from "../models/userModel.js";
 
 const transporter = nodemailer.createTransport({
   service: EMAIL_SERVICE,
@@ -134,7 +134,7 @@ export const login = async (req, res) => {
   }
 
   try {
-    const user = await User.findOne({ email });
+    let user = await User.findOne({ email });
 
     if (!user) {
       return res.status(401).json({ error: "Invalid email" });
@@ -154,8 +154,8 @@ export const login = async (req, res) => {
     }
 
     let token = generateToken(user._id);
-
-    res.json({ token });
+    user.password = undefined;
+    res.json({ token, user });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal Server Error" });
@@ -247,7 +247,7 @@ export const resetPassword = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    
+
     user.password = hashedPassword;
     user.resetToken = undefined;
     user.resetTokenExpiry = undefined;
