@@ -372,7 +372,7 @@ export const ListAvailability = async (req, res) => {
 
 export const DeleteAvailability = async (req, res) => {
   try {
-    const { car_id, dates } = req.body;
+    const { car_id } = req.query;
     // Find the car by ID
     const car = await Cars.findById(car_id);
 
