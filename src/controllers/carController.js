@@ -329,7 +329,7 @@ export const AddAvailability = async (req, res) => {
     const invalidDates = dates.filter(date => !/^\d{2}\/\d{2}\/\d{4}$/.test(date));
 
     if (invalidDates.length > 0) {
-      return res.status(400).json({ error: "Invalid date format. Date should be in mm-dd-yyyy format." });
+      return res.status(400).json({ error: "Invalid date format. Date should be in mm/dd/yyyy format." });
     }
 
     // Update availability array based on received dates
@@ -355,7 +355,7 @@ export const AddAvailability = async (req, res) => {
 
 export const ListAvailability = async (req, res) => {
   try {
-    const { car_id } = req.body;
+    const { car_id } = req.query;
     // Find the car by ID
     const car = await Cars.findById(car_id);
 
