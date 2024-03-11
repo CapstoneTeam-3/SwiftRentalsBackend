@@ -355,7 +355,7 @@ export const AddAvailability = async (req, res) => {
 
 export const ListAvailability = async (req, res) => {
   try {
-    const { car_id } = req.body;
+    const { car_id } = req.query;
     // Find the car by ID
     const car = await Cars.findById(car_id);
 
