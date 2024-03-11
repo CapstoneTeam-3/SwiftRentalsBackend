@@ -100,8 +100,10 @@ export const CreateChatList = async (req, res) => {
             }
         }
 
-        const chatList = await Chat.find({user1, user2});
-        if(chatList){
+        const chatList = await Chat.find({ $or: [{ user1, user2 }, { user1: user2, user2: user1 }]});
+        console.log("chatList", chatList);
+
+        if(chatList.length){
             return res.status(200).json({ message: "Chat already exists" });
         }
 
@@ -123,10 +125,12 @@ export const GetChatLists = async (req, res) => {
     try {
         const { user_id } = req.query;
         if (user_id) {
-            const chatList = await ChatList.find({ $or: [{ user1: user_id }, { user2: user_id }] });
+            const chatList = await ChatList.find({ $or: [{ user1: user_id }, { user2: user_id }] }).populate('user1').populate('user2');
             return res.status(200).json({ chatList });
         }
-        const chatList = await ChatList.find();
+        const chatList = await ChatList.find()
+          .populate("user1")
+          .populate("user2");
 
         return res.status(200).json({ chatList });
     } catch (error) {
