@@ -14,7 +14,7 @@ export const SendMessage = async (req, res) => {
     try {
         if (!chatList_id || !Types.ObjectId.isValid(chatList_id)) {
             return res.status(400).json({ error: "Chat list id is required" });
-        }else{
+        } else {
             const chatList = await ChatList.findById(chatList_id);
             if (!chatList) {
                 return res.status(400).json({ error: "Chat list is not valid" });;
@@ -22,7 +22,7 @@ export const SendMessage = async (req, res) => {
         }
         if (!sender_id || !Types.ObjectId.isValid(sender_id)) {
             return res.status(400).json({ error: "Sender id is required" });
-        }else{
+        } else {
             const sender = await User.findById(sender_id);
             if (!sender) {
                 return res.status(400).json({ error: "Sender is not valid" });;
@@ -30,13 +30,13 @@ export const SendMessage = async (req, res) => {
         }
         if (!receiver_id || !Types.ObjectId.isValid(receiver_id)) {
             return res.status(400).json({ error: "Receiver id is required" });
-        }else{
+        } else {
             const receiver = await User.findById(receiver_id);
             if (!receiver) {
                 return res.status(400).json({ error: "Receiver is not valid" });;
             }
         }
-        if(sender_id == receiver_id){
+        if (sender_id == receiver_id) {
             return res.status(400).json({ error: "Sender and receiver needs to be different" });;
         }
         if (!content) {
@@ -85,7 +85,7 @@ export const CreateChatList = async (req, res) => {
     try {
         if (!user1 || !Types.ObjectId.isValid(user1)) {
             return res.status(400).json({ error: "User1 is required" });
-        }else{
+        } else {
             const user_1 = await User.findById(user1);
             if (!user_1) {
                 return res.status(400).json({ error: "User1 is not valid" });;
@@ -93,17 +93,17 @@ export const CreateChatList = async (req, res) => {
         }
         if (!user2 || !Types.ObjectId.isValid(user2)) {
             return res.status(400).json({ error: "User2 is required" });
-        }else{
+        } else {
             const user_2 = await User.findById(user2);
             if (!user_2) {
                 return res.status(400).json({ error: "User2 is not valid" });;
             }
         }
 
-        const chatList = await Chat.find({ $or: [{ user1, user2 }, { user1: user2, user2: user1 }]});
+        const chatList = await Chat.find({ $or: [{ user1, user2 }, { user1: user2, user2: user1 }] });
         console.log("chatList", chatList);
 
-        if(chatList.length){
+        if (chatList.length) {
             return res.status(200).json({ message: "Chat already exists" });
         }
 
@@ -126,11 +126,18 @@ export const GetChatLists = async (req, res) => {
         const { user_id } = req.query;
         if (user_id) {
             const chatList = await ChatList.find({ $or: [{ user1: user_id }, { user2: user_id }] }).populate('user1').populate('user2');
-            return res.status(200).json({ chatList });
+            const oppositeUserChatList = chatList.map(chat => {
+                return {
+                    _id: chat._id,
+                    user: chat.user1._id.toString() === user_id.toString() ? chat.user2 : chat.user1,
+                };
+            });
+
+            return res.status(200).json({ chatList: oppositeUserChatList });
         }
         const chatList = await ChatList.find()
-          .populate("user1")
-          .populate("user2");
+            .populate("user1")
+            .populate("user2");
 
         return res.status(200).json({ chatList });
     } catch (error) {
@@ -141,13 +148,13 @@ export const GetChatLists = async (req, res) => {
 
 export const DeleteChatLists = async (req, res) => {
     try {
-        const chatList_id  = req.params.id;
+        const chatList_id = req.params.id;
         console.log('chatList_id ', chatList_id);
         if (!chatList_id || !Types.ObjectId.isValid(chatList_id)) {
             console.log('chatList_id ', Types.ObjectId.isValid(chatList_id));
             return res.status(400).json({ error: "ChatList id is required" });
         }
-        
+
         const chatList = await ChatList.findByIdAndDelete(chatList_id);
         return res.status(200).json({ message: "ChatList deleted", chatList });
     } catch (error) {
