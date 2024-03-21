@@ -1,8 +1,10 @@
 import Cars from "../models/CarModel.js";
+import CarsWishList from "../models/CarWishList.js";
 import Features from "../models/FeatureModel.js";
 import path from "path";
 import fs from "fs";
 import cloudinary from "cloudinary";
+import Ratings from "../models/RatingModel.js";
 
 const allowedFileTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif"];
 
@@ -16,6 +18,7 @@ export const AddCar = async (req, res) => {
     description,
     location,
     Features,
+    userId
   } = req.body;
 
   try {
@@ -68,7 +71,6 @@ export const AddCar = async (req, res) => {
       res.status(400).json({ error: "Car Feature is Required" });
     }
 
-    const userId = req.user.userId;
     const featuresArray = JSON.parse(Features);
 
     const newCar = new Cars({
@@ -134,12 +136,21 @@ export const GetAllCars = async (req, res) => {
       .limit(pageSize)
       .populate("Features");
 
+    const carsWithRatings = await Promise.all(cars.map(async (car) => {
+      const ratings = await Ratings.find({ car: car._id });
+      const totalRatings = ratings.length;
+      const averageRating = totalRatings > 0 ? ratings.reduce((acc, curr) => acc + curr.rating, 0) / totalRatings : 0;
+      return { ...car?._doc, ratings: { count: totalRatings, average: averageRating } };
+    }));
+
+
+  
     res.status(200).json({
       page,
       totalPages,
       pageSize,
       totalCars,
-      cars,
+      cars: carsWithRatings,
     });
   } catch (error) {
     console.error(error);
@@ -164,6 +175,8 @@ export const UpdateCar = async (req, res) => {
     description,
     location,
     Features,
+    previous_images = [],
+    userId
   } = req.body;
 
   try {
@@ -183,8 +196,15 @@ export const UpdateCar = async (req, res) => {
       res.status(400).json({ error: "Car Price is Required" });
     }
 
-    for(const image of car.images){
-      await cloudinary.uploader.destroy(image.public_id);
+    let previousPublicIds = [];
+    if(previous_images && previous_images?.length){
+      previousPublicIds = previous_images?.map(image => image.public_id);
+    }
+
+    for (const image of car.images) {
+        if (!previousPublicIds.includes(image.public_id)) {
+            await cloudinary.uploader.destroy(image.public_id);
+        }
     }
 
     const updatedImages = [];
@@ -216,7 +236,6 @@ export const UpdateCar = async (req, res) => {
       res.status(400).json({ error: "Car Feature is Required" });
     }
 
-    const userId = req.user.userId;
     const featuresArray = JSON.parse(Features);
 
     const updatedCar = await Cars.findByIdAndUpdate(carId, {
@@ -248,12 +267,19 @@ export const GetCarDetails = async (req, res) => {
 
   try {
     const car = await Cars.findById(carId).populate("Features");
-
+    
     if (!car) {
       return res.status(404).json({ error: "Car not found" });
     }
 
-    return res.json({ car });
+    const carWithRatings = await (async () => {
+      const ratings = await Ratings.find({ car: car._id });
+      const totalRatings = ratings.length;
+      const averageRating = totalRatings > 0 ? ratings.reduce((acc, curr) => acc + curr.rating, 0) / totalRatings : 0;
+      return { ...car?._doc, ratings: { count: totalRatings, average: averageRating } };
+    })();
+
+    return res.json({ car:carWithRatings });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal Server Error" });
@@ -436,6 +462,59 @@ export const ModifyAvailability = async (req, res) => {
     return res.status(404).json({ message: "Availability not found" });
   } catch (error) {
     console.error("Error updating availability:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+export const TriggerCarToWishlist = async (req, res) => {
+  try {
+    const { car_id } = req.body;
+
+    if (!car_id) {
+      return res.status(400).json({ message: "Please provide a valid car ID." });
+    }
+
+    const car = await Cars.findById(car_id);
+
+    if (!car) {
+      return res.status(404).json({ error: "Car not found." });
+    }
+
+    const existingWishlistCar = await CarsWishList.findOne({ Car: car_id });
+
+    if (existingWishlistCar) {
+      await CarsWishList.findByIdAndDelete(existingWishlistCar._id);
+      return res.status(200).json({ message: "Car removed from your wishlist." });
+    } else {
+      const newCarWishlist = new CarsWishList({
+        Car: car._id,
+        User: req.user.userId,
+      });
+
+      await newCarWishlist.save();
+      return res.status(200).json({ message: "Car added to your wishlist successfully." });
+    }
+  } catch (error) {
+    console.error("Error adding car to wishlist:", error);
+    return res.status(500).json({ error: "Internal server error." });
+  }
+};
+
+
+export const GetCarsInWishlist = async (req, res) => {
+  try {
+
+    const userCarWishlists = await CarsWishList.find({ User: req.user.userId }).populate('Car');
+
+    const carIds = userCarWishlists.map(wishlistItem => wishlistItem.Car);
+
+    const carsInWishlist = await Cars.find({ _id: { $in: carIds } });
+
+    return res
+      .status(200)
+      .json({ message: "Your wishlist", carsInWishlist: carsInWishlist });
+  } catch (error) {
+    console.error("Error addming car to wishlist:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
 }
