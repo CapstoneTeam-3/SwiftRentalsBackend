@@ -12,6 +12,8 @@ import {
   ListAvailability,
   DeleteAvailability,
   ModifyAvailability,
+  TriggerCarToWishlist,
+  GetCarsInWishlist
 } from "../controllers/carController.js";
 import { authenticate } from "../middlewares/authMiddleware.js";
 import multer from "multer";
@@ -58,7 +60,7 @@ const upload = multer({
 car.post("/add-car", authenticate, upload.array("images", maxFiles), AddCar);
 car.put(
   "/update-car/:id",
-  authenticate,
+authenticate,
   upload.array("images", maxFiles),
   UpdateCar
 );
@@ -67,6 +69,8 @@ car.get("/get-car/:id", authenticate, GetCarDetails);
 car.post("/add-feature", authenticate, AddFeature);
 car.delete("/delete-car/:id", authenticate, DeleteCar);
 car.get("/get-all-features", authenticate, ListAllFeatures);
+car.post("/trigger-car-to-wishlist",authenticate, TriggerCarToWishlist);
+car.get("/get-cars-in-wishlist",authenticate, GetCarsInWishlist);
 
 // Car Availability
 car.post("/add-availability", AddAvailability);
