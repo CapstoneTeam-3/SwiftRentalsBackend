@@ -11,6 +11,7 @@ import authRoutes from "./src/routes/auth.js";
 import bookingRoutes from "./src/routes/booking.router.js";
 import carRoutes from "./src/routes/car.js";
 import chatRoutes from "./src/routes/chat.js";
+import ratingRoutes from "./src/routes/rating.js";
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -65,6 +66,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/car", carRoutes);
 app.use("/api/booking", bookingRoutes);
 app.use("/api/chat", chatRoutes);
+app.use("/api/rating", ratingRoutes);
 
 httpServer.listen(PORT, () => {
   console.log(`\x1b[36m listening on port ${PORT}...\x1b[0m`);
