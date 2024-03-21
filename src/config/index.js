@@ -1,13 +1,7 @@
-// src/config/index.js
 import { config } from 'dotenv';
 import cloudinary from 'cloudinary';
 
 config();
-
-if (!process.env.PORT) {
-  throw new Error('PORT environment variable is not set');
-}
-
 
 export const PORT = process.env.PORT || 3000;
 export const MONGODB_URI = process.env.MONGODB_URI;
