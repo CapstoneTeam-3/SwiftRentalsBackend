@@ -1,3 +1,4 @@
+import Stripe from "stripe";
 import { z } from "zod";
 import { BookingStatus, UserRoles, mapValidationErrors } from "../constants.js";
 import Bookings from "../models/BookingModel.js";
@@ -232,5 +233,23 @@ export const getAllBookingRequestsWithFilter = async (req, res) => {
         .status(200)
         .json({ message: "No booking exist for given user" });
     return res.status(200).json(bookings);
+  }
+};
+
+export const handlePayment = async (req, res) => {
+  const stripe = new Stripe(
+    "sk_test_51OmOBbBCdwIluutvTtCyVyfY1MdLACDvUzjZYMliaGa7gARXBySqmZyRPbidPmxdwBQukuj09eZHHnWA6SbIGh5L00ERxp64Du"
+  );
+  try {
+    console.log("amount:", req.query);
+    //TODO: once prices are fixed change static price with above
+    const intent = await stripe.paymentIntents.create({
+      amount: 50,
+      currency: "cad",
+      payment_method_types: ["card"],
+    });
+    res.json({ client_secret: intent.client_secret });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 };

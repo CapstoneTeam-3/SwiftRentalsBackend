@@ -13,7 +13,7 @@ import {
   DeleteAvailability,
   ModifyAvailability,
   TriggerCarToWishlist,
-  GetCarsInWishlist
+  GetCarsInWishlist,
 } from "../controllers/carController.js";
 import { authenticate } from "../middlewares/authMiddleware.js";
 import multer from "multer";
@@ -57,20 +57,15 @@ const upload = multer({
   limits: { fileSize: 1024 * 1024 * 5 },
 });
 
-car.post("/add-car", authenticate, upload.array("images", maxFiles), AddCar);
-car.put(
-  "/update-car/:id",
-authenticate,
-  upload.array("images", maxFiles),
-  UpdateCar
-);
-car.get("/get-cars", authenticate, GetAllCars);
-car.get("/get-car/:id", authenticate, GetCarDetails);
-car.post("/add-feature", authenticate, AddFeature);
-car.delete("/delete-car/:id", authenticate, DeleteCar);
-car.get("/get-all-features", authenticate, ListAllFeatures);
-car.post("/trigger-car-to-wishlist",authenticate, TriggerCarToWishlist);
-car.get("/get-cars-in-wishlist",authenticate, GetCarsInWishlist);
+car.post("/add-car", upload.array("images", maxFiles), AddCar);
+car.put("/update-car/:id", upload.array("images", maxFiles), UpdateCar);
+car.get("/get-cars", GetAllCars);
+car.get("/get-car/:id", GetCarDetails);
+car.post("/add-feature", AddFeature);
+car.delete("/delete-car/:id", DeleteCar);
+car.get("/get-all-features", ListAllFeatures);
+car.post("/trigger-car-to-wishlist", TriggerCarToWishlist);
+car.get("/get-cars-in-wishlist", GetCarsInWishlist);
 
 // Car Availability
 car.post("/add-availability", AddAvailability);

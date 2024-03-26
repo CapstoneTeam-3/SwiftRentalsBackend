@@ -1,4 +1,3 @@
-// src/routes/auth.js
 import { Router } from "express";
 import { CreateChatList, DeleteChatLists, GetChatLists, ListMessages, SendMessage } from "../controllers/chatController.js";
 import { authenticate } from "../middlewares/authMiddleware.js";

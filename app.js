@@ -20,6 +20,6 @@ export const initializeExpress = () => {
   app.use("/api/car", carRoutes);
   app.use("/api/booking", bookingRoutes);
   app.use("/api/chat", chatRoutes);
-  
+
   return app;
 };
